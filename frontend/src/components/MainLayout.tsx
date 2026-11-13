@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import Navbar from './Navbar';
+import Footer from './Footer';
 import fondEtoiles from '../assets/heroWatchItTonight.jpg';
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-dvh w-full overflow-hidden bg-[#090C2C] text-white">
+    <div className="relative flex min-h-dvh w-full flex-col overflow-hidden bg-[#090C2C] text-white">
       {/* Fond étoilé : limité à 55vh, coupé par overflow-hidden du parent */}
       <div
         className="pointer-events-none absolute left-0 top-0 h-[55vh] w-full bg-cover bg-center bg-no-repeat"
@@ -15,9 +16,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
       <Navbar />
 
-      <main className="relative z-10 flex w-full flex-col items-center px-4 pb-4 pt-24">
+      <main className="relative z-10 flex w-full flex-1 flex-col items-center px-4 pb-4 pt-24">
         {children}
       </main>
+
+      <Footer />
     </div>
   );
 }

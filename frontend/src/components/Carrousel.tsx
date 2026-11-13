@@ -1,14 +1,14 @@
 import { useRef, useEffect } from 'react'
-import affiche1 from '../assets/affiche1.jpg'
-import affiche2 from '../assets/affiche2.jpg'
-import affiche3 from '../assets/affiche3.jpg'
-import affiche4 from '../assets/affiche4.jpg'
-import affiche5 from '../assets/affiche5.jpg'
-import affiche6 from '../assets/affiche6.jpg'
-import affiche7 from '../assets/affiche7.jpg'
-import affiche8 from '../assets/affiche8.jpg'
-import affiche9 from '../assets/affiche9.jpg'
-import affiche10 from '../assets/affiche10.jpg'
+import affiche1 from '../assets/Affiche1.jpg'
+import affiche2 from '../assets/Affiche2.jpg'
+import affiche3 from '../assets/Affiche3.jpg'
+import affiche4 from '../assets/Affiche4.jpg'
+import affiche5 from '../assets/Affiche5.jpg'
+import affiche6 from '../assets/Affiche6.jpg'
+import affiche7 from '../assets/Affiche7.jpg'
+import affiche8 from '../assets/Affiche8.jpg'
+import affiche9 from '../assets/Affiche9.jpg'
+import affiche10 from '../assets/Affiche10.jpg'
 
 interface Movie {
     id: number
@@ -31,6 +31,12 @@ const movies: Movie[] = [
 
 const Carrousel = () => {
     const trackRef = useRef<HTMLDivElement>(null)
+    const dragState = useRef({
+        isDown: false,
+        hasDragged: false,
+        startX: 0,
+        scrollLeft: 0,
+    })
 
     // Calcule scale / opacité de chaque affiche selon sa distance au centre
     const update = (): void => {
@@ -48,9 +54,86 @@ const Carrousel = () => {
         })
     }
 
+    // Centre une affiche donnée dans le carrousel
+    const scrollToSlide = (el: HTMLElement): void => {
+        const track = trackRef.current
+        if (!track) return
+        const target = el.offsetLeft + el.offsetWidth / 2 - track.clientWidth / 2
+        track.scrollTo({ left: target, behavior: 'smooth' })
+    }
+
+    // Aligne l'affiche la plus proche du centre à la fin d'un glisser souris
+    const snapToClosestSlide = (): void => {
+        const track = trackRef.current
+        if (!track) return
+        const center = track.scrollLeft + track.clientWidth / 2
+        let closestEl: HTMLElement | null = null
+        let minDistance = Infinity
+
+        track.querySelectorAll<HTMLElement>('[data-slide]').forEach((el) => {
+            const elCenter = el.offsetLeft + el.offsetWidth / 2
+            const dist = Math.abs(center - elCenter)
+            if (dist < minDistance) {
+                minDistance = dist
+                closestEl = el
+            }
+        })
+
+        track.style.scrollSnapType = ''
+        if (closestEl) {
+            scrollToSlide(closestEl)
+        }
+    }
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>): void => {
+        const track = trackRef.current
+        if (!track) return
+        dragState.current = {
+            isDown: true,
+            hasDragged: false,
+            startX: e.pageX,
+            scrollLeft: track.scrollLeft,
+        }
+        track.style.scrollSnapType = 'none'
+    }
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>): void => {
+        const track = trackRef.current
+        if (!track || !dragState.current.isDown) return
+        e.preventDefault()
+        const walk = e.pageX - dragState.current.startX
+        if (Math.abs(walk) > 5) {
+            dragState.current.hasDragged = true
+        }
+        track.scrollLeft = dragState.current.scrollLeft - walk * 1.2
+    }
+
+    const handleMouseUpOrLeave = (): void => {
+        if (!dragState.current.isDown) return
+        dragState.current.isDown = false
+        if (dragState.current.hasDragged) {
+            snapToClosestSlide()
+        } else if (trackRef.current) {
+            trackRef.current.style.scrollSnapType = ''
+        }
+    }
+
+    const handleSlideClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+        if (dragState.current.hasDragged) return
+        scrollToSlide(e.currentTarget)
+    }
+
     useEffect(() => {
         const track = trackRef.current
         if (!track) return
+
+        // Positionne le carrousel au milieu au chargement pour avoir des films des deux côtés
+        const slides = track.querySelectorAll<HTMLElement>('[data-slide]')
+        const middleSlide = slides[Math.floor(slides.length / 2)]
+        if (middleSlide) {
+            track.scrollLeft =
+                middleSlide.offsetLeft + middleSlide.offsetWidth / 2 - track.clientWidth / 2
+        }
 
         let raf: number | null = null
         const onScroll = (): void => {
@@ -77,7 +160,11 @@ const Carrousel = () => {
         <section className="w-full">
             <div
                 ref={trackRef}
-                className="relative flex w-full snap-x snap-mandatory items-center overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUpOrLeave}
+                onMouseLeave={handleMouseUpOrLeave}
+                className="relative flex w-full cursor-grab select-none snap-x snap-mandatory items-center overflow-x-auto overflow-y-hidden active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
                 {/* Espaceur gauche : permet de centrer la 1ère affiche */}
                 <div className="w-[calc(50%-min(26vw,110px))] shrink-0" aria-hidden="true" />
@@ -86,7 +173,8 @@ const Carrousel = () => {
                     <div
                         key={movie.id}
                         data-slide
-                        className="w-[52vw] max-w-[220px] shrink-0 snap-center px-2 will-change-transform md:max-w-60"
+                        onClick={handleSlideClick}
+                        className="w-[52vw] max-w-[220px] shrink-0 cursor-pointer snap-center px-2 will-change-transform md:max-w-60"
                     >
                         <img
                             src={movie.img}
